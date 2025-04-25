@@ -1,0 +1,540 @@
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { VMS_URL, VMS_VISITORS } from "../Config/Config";
+import LogoImg from "../Assests/Images/logo.jpg";
+import myVideo from "../Assests/Images/123.mp4";
+
+export default function SignIn() {
+
+    const [showPassword, setShowPassword] = useState(false);
+    const [userName, setUserName] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState(null);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgotEmailBtnLoading, setForgotEmailBtnLoading] = useState(false);
+    const [dispalyEmail, setDispalyEmail] = useState(true);
+    const [dispalyOTP, setDispalyOTP] = useState(false);
+    const [dispalyPwd, setDispalyPwd] = useState(false);
+    const [otp, setOtp] = useState(new Array(4).fill(""));
+    const inputRefs = useRef([]);
+
+    const [formData, setFormData] = useState({
+        Name: "",
+        NewPassword: "",
+        ConfirmPassword: "",
+    });
+
+    useEffect(() => {
+        inputRefs.current = inputRefs.current.slice(0, otp.length);
+    }, [otp]);
+
+    const navigate = useNavigate();
+
+    const togglePasswordVisibility = () => {
+        setShowPassword((prevState) => !prevState);
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setError(null);
+        setLoading(false);
+        setErrorMessage(null);
+
+        try {
+            setLoading(true);
+
+            const url = `${VMS_URL}SignIn?UserName=${encodeURIComponent(
+                userName
+            )}&Password=${encodeURIComponent(password)}`;
+            // console.log(url);
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            });
+
+            const result = await response.json();
+            console.log(result, "rrrrr");
+            setLoading(false);
+
+            if (response.ok) {
+                if (result.Status) {
+                    setLoading(false);
+                    sessionStorage.setItem(
+                        "userData",
+                        JSON.stringify(result["ResultData"][0])
+                    );
+                    navigate(result["ResultData"][0].MenuPath);
+                } else {
+                    setLoading(false);
+                    setErrorMessage(result.error);
+                    console.error("Error during sign-in", result.error);
+                    setError(result.error);
+                }
+            } else {
+                setLoading(false);
+                setErrorMessage(result.error);
+                console.error("Error during sign-in", result.error);
+                setError(result.error);
+            }
+        } catch (err) {
+            setErrorMessage("Something went wrong. Please try again later.");
+            setLoading(false);
+            setError("Something went wrong. Please try again later.");
+        }
+    };
+
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const toggleShowNewPassword = () => setShowNewPassword(!showNewPassword);
+    const toggleShowConfirmPassword = () => setShowConfirmPassword(!showConfirmPassword);
+
+    const handleFPWSubmit = async (e) => {
+        e.preventDefault();
+        if (formData.NewPassword !== formData.ConfirmPassword) {
+            alert("Passwords do not match!");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${VMS_URL}forgotPassword`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    Name: formData.Name,
+                    Password: formData.NewPassword,
+                }),
+            });
+
+            if (response.ok) {
+                alert("Password updated successfully!");
+                setFormData({ Name: "", NewPassword: "", ConfirmPassword: "" });
+            } else {
+                alert("Failed to update password. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            alert("An error occurred. Please try again later.");
+        }
+    };
+
+    const handleForgotEmail = async (e) => {
+        e.preventDefault();
+        setForgotEmailBtnLoading(true);
+    
+        try {
+            console.log(forgotEmail);
+            const response = await fetch(`${VMS_VISITORS}ForgotPassword`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    Email: forgotEmail,
+                }),
+            });
+    
+            const responseData = await response.json();
+    
+            console.log("Response Data:", responseData);
+    
+            if (response.ok) {
+                if (responseData.Status) { 
+                        setForgotEmailBtnLoading(false);
+                        setDispalyEmail(false);
+                        setDispalyPwd(false);
+                        setDispalyOTP(true);
+                        alert(responseData.message || "OTP sent successfully!");
+                }
+            } else {
+                setForgotEmailBtnLoading(false);
+                alert(responseData.error || "Failed to send email. Please try again.");
+            }
+        } catch (error) {
+            setForgotEmailBtnLoading(false);
+            console.error("Error:", error);
+            alert("An error occurred. Please try again later.");
+        }
+    };    
+
+    const handleChange = (value, index) => {
+        if (/^\d$/.test(value)) { // Accept only digits (0-9)
+            const newOtp = [...otp];
+            newOtp[index] = value;
+            setOtp(newOtp);
+
+            // Move to next input if available
+            if (index < 3 && inputRefs.current[index + 1]) {
+                inputRefs.current[index + 1].focus();
+            }
+        }
+    };
+
+    // Handle Backspace functionality
+    const handleKeyDown = (e, index) => {
+        if (e.key === 'Backspace') {
+            const newOtp = [...otp];
+            newOtp[index] = ""; // Clear current value
+            setOtp(newOtp);
+
+            // Move to the previous input if available
+            if (index > 0) {
+                inputRefs.current[index - 1].focus();
+            }
+        }
+    };
+
+    // Handle Submit
+    const handleOTPSubmit = async (e) => {  // <-- Added `async` here
+        e.preventDefault();
+        const otpValue = otp.join(""); // Combine digits into one string
+        console.log("Entered OTP:", otpValue);
+        setForgotEmailBtnLoading(true);
+    
+        if (otpValue.length === 4) {
+            try {
+                console.log(forgotEmail);
+                const payload = {
+                    Email: forgotEmail,
+                    OTP: otpValue
+                };
+    
+                console.log("📦 JSON Payload:", payload); // ✅ Log the payload
+    
+                const response = await fetch(`${VMS_VISITORS}ConfirmOTP`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload), // Sending the payload
+                });
+                const responseData = await response.json();
+                console.log("Response Data:", responseData);
+    
+                if (response.ok) {
+                    setForgotEmailBtnLoading(false);
+                    setForgotEmailBtnLoading(false);
+                    setForgotEmailBtnLoading(false);
+                    setDispalyEmail(false);
+                    setDispalyOTP(false);
+                    setDispalyPwd(true);
+                    if (responseData.Status) { 
+                        alert(responseData.message || "OTP sent successfully!");
+                    }
+                } else {
+                    setForgotEmailBtnLoading(false);
+                    setForgotEmailBtnLoading(false);
+                    alert(responseData.error || "Failed to send email. Please try again.");
+                }
+            } catch (error) {
+                setForgotEmailBtnLoading(false);
+                setForgotEmailBtnLoading(false);
+                console.error("Error:", error);
+                alert("An error occurred. Please try again later.");
+            }
+        } else {
+            alert("Please enter a valid 4-digit OTP.");
+        }
+    };
+
+    const maskEmail = (email) => {
+        if (!email) return "";
+
+        const [user, domain] = email.split("@"); // Split email at '@'
+        const maskedUser = user[0] + "*".repeat(user.length - 1); // Mask all characters except the first
+        return `${maskedUser}@${domain}`;
+    };
+    
+
+    return (
+        <div className="d-flex flex-column flex-root" id="kt_app_root">
+            <div className="d-flex flex-column flex-lg-row flex-column-fluid">
+                <div className="d-flex flex-column flex-lg-row-fluid w-lg-50 px-10 py-5 order-2 order-lg-1">
+                    <div className="d-flex flex-center flex-column flex-lg-row-fluid">
+                        <img src={LogoImg} style={{ height: "10rem" }} />
+                        <div className="w-lg-500px px-10 py-5 mt-5">
+                            <form className="form w-100" onSubmit={handleSubmit}>
+                                <div className="text-center mb-11">
+                                    <h1 className="text-gray-900 fw-bolder mb-3">Sign In</h1>
+                                </div>
+                                <div className="fv-row mb-8">
+                                    <label className="form-label">
+                                        <i className="fa-regular fa-user me-2"></i>User Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Enter User Name"
+                                        name="username"
+                                        autoComplete="off"
+                                        className="form-control bg-transparent"
+                                        value={userName}
+                                        onChange={(e) => setUserName(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <div className="fv-row mb-3 position-relative">
+                                    <label className="form-label">
+                                        <i className="fa-solid fa-key me-2"></i>Password
+                                    </label>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder="Enter Password"
+                                        name="password"
+                                        autoComplete="off"
+                                        className="form-control bg-transparent"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                        disabled={loading}
+                                    />
+                                    <span
+                                        onClick={loading ? null : togglePasswordVisibility}
+                                        style={{
+                                            position: "absolute",
+                                            top: "70%",
+                                            right: "10px",
+                                            transform: "translateY(-50%)",
+                                            cursor: loading ? "not-allowed" : "pointer",
+                                        }}
+                                    >
+                                        <i
+                                            className={`fa-regular fa-eye${showPassword ? "-slash" : ""
+                                                }`}
+                                        ></i>
+                                    </span>
+                                </div>
+
+                                {errorMessage && (
+                                    <p className="alert alert-danger">{errorMessage}</p>
+                                )}
+                                <div className="d-grid mb-10">
+                                    <button
+                                        type="submit"
+                                        id="kt_sign_in_submit"
+                                        className="btn btn-primary"
+                                        disabled={loading}
+                                    >
+                                        <span className="indicator-label">
+                                            {loading ? "Please wait..." : "Sign In"}
+                                        </span>
+                                    </button>
+                                </div>
+
+                                <div className="d-flex flex-stack flex-wrap gap-3 fs-base fw-semibold mb-8">
+                                    <div></div>
+                                    <a
+                                        className="link-primary"
+                                        data-bs-toggle="offcanvas"
+                                        href="#offcanvasForgotPassword"
+                                        role="button"
+                                        aria-controls="offcanvasForgotPassword"
+                                    >
+                                        Forgot Password?
+                                    </a>
+                                </div>
+                                <div className="text-gray-500 text-center fw-semibold fs-6">
+                                    Not a Member yet?
+                                    <a className="link-primary ms-2">Sign up</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    className="d-flex flex-lg-row-fluid w-lg-750 bgi-size-cover bgi-position-center order-1 order-lg-2 d-none d-md-block"
+                    style={{ backgroundImage: "url(assets/media/misc/auth-bg.png)" }}
+                >
+                    <div className="d-flex flex-column flex-center py-5 py-lg-6` px-5 px-md-15 w-100">
+
+                        <div
+                            className="d-flex flex-column flex-center py-7 py-lg-15 px-5 px-md-15 w-100"
+                        >
+                            <video
+                                width="888"
+                                height="auto"
+                                controls
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                style={{
+                                    width: "126.35%",
+                                    maxWidth: "999px",
+                                    height: "auto",
+                                    display: window.innerWidth < 768 ? "none" : "block",
+                                }}
+                            >
+                                <source src={myVideo} type="video/mp4" />
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Forgopot PWD */}
+            <div
+                className="offcanvas offcanvas-end"
+                tabIndex="-1"
+                id="offcanvasForgotPassword"
+                aria-labelledby="offcanvasForgotPasswordLabel"
+            >
+                <div className="offcanvas-header">
+                    <h5 className="offcanvas-title" id="offcanvasForgotPasswordLabel">
+                        Forgot Password
+                    </h5>
+                    <button
+                        type="button"
+                        className="btn-close"
+                        data-bs-dismiss="offcanvas"
+                        aria-label="Close"
+                    ></button>
+                </div>
+                <div className="offcanvas-body">
+                    <form onSubmit={handleFPWSubmit} className={`${dispalyPwd ? 'd-block' : 'd-none'}`}>
+                        <div className="mb-3">
+                            <label htmlFor="username" className="form-label">
+                                Username
+                            </label>
+                            <input
+                                type="text"
+                                id="username"
+                                name="Name"
+                                value={formData.Name}
+                                className="form-control"
+                                onChange={handleInputChange}
+                                required
+                            />
+                        </div>
+                        <div className="mb-3">
+                            <label htmlFor="newPassword" className="form-label">
+                                New Password
+                            </label>
+                            <div className="input-group">
+                                <input
+                                    type={showNewPassword ? "text" : "password"}
+                                    id="newPassword"
+                                    name="NewPassword"
+                                    value={formData.NewPassword}
+                                    className="form-control"
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck="false"
+                                    onChange={handleInputChange}
+                                    required
+                                />
+                                <span className="input-group-text">
+                                    <i
+                                        className={`fa ${showNewPassword ? "fa-eye" : "fa-eye-slash"
+                                            }`}
+                                        style={{ cursor: "pointer" }}
+                                        onClick={toggleShowNewPassword}
+                                    ></i>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <label htmlFor="confirmPassword" className="form-label">
+                                Confirm Password
+                            </label>
+                            <div className="input-group">
+                                <input
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    id="confirmPassword"
+                                    name="ConfirmPassword"
+                                    value={formData.ConfirmPassword}
+                                    className="form-control"
+                                    onChange={handleInputChange}
+                                    autoComplete="off"
+                                    autoCorrect="off"
+                                    spellCheck="false"
+                                    required
+                                />
+                                <span className="input-group-text">
+                                    <i
+                                        className={`fa ${showConfirmPassword ? "fa-eye" : "fa-eye-slash"
+                                            }`}
+                                        style={{ cursor: "pointer" }}
+                                        onClick={toggleShowConfirmPassword}
+                                    ></i>
+                                </span>
+                            </div>
+                        </div>
+                        <button type="submit" className="btn btn-primary w-100" disabled={forgotEmailBtnLoading}>
+                            {forgotEmailBtnLoading ? 'Submitting...' : 'Submit'}
+                        </button>
+                    </form>
+
+                    <form onSubmit={handleForgotEmail} className={`${dispalyEmail ? 'd-block' : 'd-none'}`}>
+                        <div className="mb-3">
+                            <label htmlFor="newPassword" className="form-label">
+                                Email
+                            </label>
+                            <input
+                                type="email"
+                                placeholder="Enter email address"
+                                value={forgotEmail}
+                                className="form-control"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck="false"
+                                onChange={(e) => setForgotEmail(e.target.value)}
+                                required
+                            />
+                        </div>
+                       
+                        <button type="submit" className="btn btn-primary w-100" disabled={forgotEmailBtnLoading}>
+                            {forgotEmailBtnLoading ? 'Submitting...' : 'Submit'}
+                        </button>
+                    </form>
+
+                    <form onSubmit={handleOTPSubmit} className={`${dispalyOTP ? 'd-block' : 'd-none'}`}>
+                        <p>
+                            An OTP has been sent to your registered email address:  
+                            <strong className="text-primary"> {maskEmail(forgotEmail)} </strong>
+                        </p>
+                        <p className="text-muted">
+                            Please enter the 4-digit OTP below to continue. The OTP is valid for the next **5 minutes**.
+                        </p>
+                        <div className="mb-3">
+                            <label htmlFor="newPassword" className="form-label">OTP</label>
+                            <div className="mb-3 d-flex gap-2">
+                                {otp.map((digit, index) => (
+                                    <input
+                                        key={index}
+                                        ref={(ref) => (inputRefs.current[index] = ref)}
+                                        type="text"
+                                        maxLength="1"
+                                        value={digit}
+                                        onChange={(e) => handleChange(e.target.value, index)}
+                                        onKeyDown={(e) => handleKeyDown(e, index)}
+                                        className="form-control text-center"
+                                        style={{
+                                            width: "40px",
+                                            height: "40px",
+                                            fontSize: "20px",
+                                            textAlign: "center",
+                                            border: "2px solid #007bff",
+                                            borderRadius: "5px",
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                       
+                        <button type="submit" className="btn btn-primary w-100" disabled={forgotEmailBtnLoading}>
+                            {forgotEmailBtnLoading ? 'Submitting...' : 'Submit'}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
