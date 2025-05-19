@@ -1,332 +1,310 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, {useState, useEffect} from 'react';
+import { Link } from 'react-router-dom';
+import { VMS_URL } from './Config';
+import { Popover } from 'antd';
+import { useNavigate } from 'react-router-dom';
+import LogoImg from '../Assests/Images/logo.jpg';
 
 const Base = ({ children }) => {
 
-    const location = useLocation();
-    const currentPath = location.pathname;
-    const [showChat, setShowChat] = useState(false);
-    const [showEnquiry, setShowEnquiry] = useState(false);
+    const [sessionUserData, setSessionUserData] = useState([]);
+    const [menuItems, setMenuItems] = useState([]);
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const userDataString = sessionStorage.getItem('userData');
+        if (userDataString) {
+            const userData = JSON.parse(userDataString);
+            setSessionUserData(userData);
+            // console.log(userData)
+        } else {
+            console.log('User data not found in sessionStorage');
+        }
+    }, []);
+
+    const handleLogout = () => {
+        sessionStorage.clear();
+        localStorage.clear();
+        navigate('/');
+    }
+
+    const content = (
+        <div className="text-dark">
+            <div className="menu-item px-3">
+                <div className="menu-content d-flex align-items-center px-3">
+                    <div className="symbol symbol-50px me-5">
+                        {/* <img alt="Logo" src="assets/media/avatars/300-3.jpg" /> */}
+                        <div
+                            style={{
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "50%",
+                                backgroundColor: "skyblue",
+                                color: "#333",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "18px",
+                                fontWeight: "bold",
+                                textTransform: "uppercase",
+                            }}
+                            >
+                            {sessionUserData?.Name?.charAt(0)}
+                        </div>
+                    </div>
+                    <div className="d-flex flex-column">
+                        <div className="fw-bold d-flex align-items-center fs-5">{sessionUserData.Name}
+                        <span className="badge badge-light-success fw-bold fs-8 px-2 py-1 ms-2">{setSessionUserData.RoleName}</span></div>
+                        <a href="#" className="fw-semibold text-muted text-hover-primary fs-7">{sessionUserData.Email}</a>
+                    </div>
+                </div>
+            </div>
+            <div className="separator my-2"></div>
+            <div className="menu-item px-5">
+                <a className="menu-link px-5 text-dark text-hover-warning"><i className="fa-regular fa-user text-info me-2"></i> My Profile</a>
+            </div>            
+            
+            <div className="menu-item px-5">
+                <a className="menu-link px-5 text-dark text-hover-warning" onClick={handleLogout}>
+                    <i className="fa-solid fa-arrow-right-from-bracket text-danger me-2"></i> Sign Out
+                </a>
+            </div>
+        </div>
+    );
+
+    useEffect(() => {
+        if (sessionUserData.OrgId) {
+            const fetchMenuData = async () => {
+                try {
+                const sessionData = sessionStorage.getItem("menuData");
+        
+                if (sessionData) {
+                    setMenuItems(JSON.parse(sessionData));
+                    console.log("Data loaded from session storage", sessionData);
+                } else {
+                    const response = await fetch(
+                        `${VMS_URL}getmenu?OrgId=${sessionUserData.OrgId}&RoleId=${sessionUserData.RoleId}`
+                    );
+        
+                    if (response.ok) {
+                        const data = await response.json();
+                        setMenuItems(data.ResultData);
+                        sessionStorage.setItem("menuData", JSON.stringify(data.ResultData));
+                    } else {
+                        console.error("Failed to fetch menu data:", response.statusText);
+                    }
+                }
+                } catch (error) {
+                    console.error("Error fetching menu data:", error.message);
+                }
+            };
+        
+            fetchMenuData();
+        }
+    }, [VMS_URL, sessionUserData]);
+
+    const toggleDropdown = (index) => {
+        setActiveDropdown((prevIndex) => (prevIndex === index ? null : index));
+    };
 
 
     return (
         <>
-            <header id="header" className="header d-flex align-items-center fixed-top">
-                <div className="container-fluid container-xl position-relative d-flex align-items-center justify-content-between">
-                    <a className="logo d-flex align-items-center text-decoration-none">
-                        <img src="assets/img/logo.png" alt="" />
-                        <h1 className="sitename">CWI</h1>
-                    </a>
-                    <nav id="navmenu" className="navmenu">
-                        <ul>
-                            <li><Link to='/home' className={`text-decoration-none ${currentPath === '/' ? 'active' : ''}`}>Home</Link></li>
-                            <li className="dropdown "><a href="#" className='text-decoration-none'><span>Products</span> <i className="bi bi-chevron-down toggle-dropdown"></i></a>
-                                <ul>
-                                    <li><Link to='/product1' className='text-decoration-none'>Product-1</Link></li>
-                                    <li><Link to='/product2' className='text-decoration-none'>Product-2</Link></li>
-                                    <li><Link to='/product3' className='text-decoration-none'>Product-3</Link></li>
-                                    <li><Link to='/product4' className='text-decoration-none'>Product-4</Link></li>
-                                    <li><Link to='/product5' className='text-decoration-none'>Product-5</Link></li>
-                                    <li><Link to='/product6' className='text-decoration-none'>Product-6</Link></li>
-                                    <li><Link to='/product7' className='text-decoration-none'>Product-7</Link></li>
-                                </ul>
-                            </li>
-                            {/* <li><a className='text-decoration-none' style={{ cursor: 'pointer' }} onClick={() => setShowEnquiry(true)}>Enquiry</a></li> */}
-                            {/* <li><Link to='/about' className={`text-decoration-none ${currentPath === '/about' ? 'active' : ''}`}>About</Link></li> */}
-                            <li><Link to='/careers' className={`text-decoration-none ${currentPath === '/careers' ? 'active' : ''}`}>Careers</Link></li>
-                            {/* <li><Link to='/team' className={`text-decoration-none ${currentPath === '/team' ? 'active' : ''}`}>Team</Link></li> */}
-                            <li><Link to='/blog' className='text-decoration-none'>Blog</Link></li>
-                            <li><Link to='/contact' className='text-decoration-none'>Contact</Link></li>
-                            <li><Link to='/' className='text-decoration-none text-warning'>Logout</Link></li>
-                        </ul>
-                        <i className="mobile-nav-toggle d-xl-none bi bi-list"></i>
-                    </nav>
-                </div>
-            </header>
+            <div className="d-flex flex- flex-root app-root" id="kt_app_root">
+                <div className="app-page flex-column flex-column-fluid" id="kt_app_page">
+                    <div id="kt_app_header" className="app-header bg-primary" >
+                        <div
+                            className="app-container container-fluid d-flex align-items-stretch justify-content-between"
+                            id="kt_app_header_container"
+                        >
+                            {/* Left Section */}
+                            <div className="d-flex align-items-center d-lg-none ms-n3 me-1 me-md-2" title="Show sidebar menu">
+                                <div className="btn btn-icon btn-active-color-primary w-35px h-35px" id="kt_app_sidebar_mobile_toggle">
+                                    <i className="ki-duotone ki-abstract-14 fs-2 fs-md-1">
+                                        <span className="path1"></span>
+                                        <span className="path2"></span>
+                                    </i>
+                                </div>
+                            </div>
 
-            <main className="main">
-                {children}
-            </main>
+                            {/* Center Section */}
+                            <div className="d-flex align-items-center flex-grow-1 flex-lg-grow-0">
+                                <Link to='/dashboard' className="d-lg-none">
+                                    <img alt="Logo" src={LogoImg} className="h-40px" />
+                                </Link>
+                            </div>
 
-            <footer id="footer" className="footer dark-background">
-                <div className="footer-newsletter">
-                    <div className="container">
-                        <div className="row justify-content-center text-center">
-                            <div className="col-lg-6">
-                                <h4>Join Our Newsletter</h4>
-                                <p>Subscribe to our newsletter and receive the latest news about our products and services!</p>
-                                <form action="forms/newsletter.php" method="post" className="php-email-form">
-                                    <div className="newsletter-form"><input type="email" name="email" /><input type="submit" value="Subscribe" /></div>
-                                    <div className="loading">Loading</div>
-                                    <div className="error-message"></div>
-                                    <div className="sent-message">Your subscription request has been sent. Thank you!</div>
-                                </form>
+                            {/* Right Section */}
+                            <div
+                                className="d-flex align-items-center ms-auto gap-3"
+                                id="kt_app_header_right"
+                            >
+                                {/* Search */}
+                                <div className="btn btn-icon bg-white w-35px h-35px">
+                                    <i className="ki-duotone ki-magnifier text-primary fs-2">
+                                        <span className="path1 text-primary"></span>
+                                        <span className="path2 text-primary"></span>
+                                    </i>
+                                </div>
+
+                                {/* Notifications */}
+                                {/* tn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-35px h-35px */}
+                                <div className="btn btn-icon bg-white w-35px h-35px">
+                                    <i className="ki-duotone ki-notification-status text-primary fs-2">
+                                        <span className="path1"></span>
+                                        <span className="path2"></span>
+                                        <span className="path3"></span>
+                                        <span className="path4"></span>
+                                    </i>
+                                </div>
+
+                                {/* Chat */}
+                                <div className="btn btn-icon bg-white w-35px h-35px position-relative">
+                                    <i className="ki-duotone ki-message-text-2 text-primary fs-2">
+                                        <span className="path1"></span>
+                                        <span className="path2"></span>
+                                        <span className="path3"></span>
+                                    </i>
+                                    {/* <span className="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 start-50 animation-blink"></span> */}
+                                </div>
+
+                                {/* User Avatar */}
+                                <Popover placement="bottom" content={content}>
+                                    <div className="cursor-pointer symbol symbol-35px">
+                                        <img src="assets/media/avatars/300-3.jpg" className="rounded-3" alt="user" />
+                                    </div>
+                                </Popover>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="app-wrapper flex- flex-row-fluid" id="kt_app_wrapper">
+                        <div id="kt_app_sidebar" className="app-sidebar flex-column" style={{ marginTop: '-6rem', width: '13%' }} data-kt-drawer="true" data-kt-drawer-name="app-sidebar" data-kt-drawer-activate="{default: true, lg: false}" data-kt-drawer-overlay="true" data-kt-drawer-width="225px" data-kt-drawer-direction="start" data-kt-drawer-toggle="#kt_app_sidebar_mobile_toggle">
+                            <div className="app-sidebar-logo px-6" id="kt_app_sidebar_logo">
+                                <Link to='/dashboard'>
+                                    <img alt="Logo" src={LogoImg} className="h-50px app-sidebar-logo-default" />
+                                    <img alt="Logo" src={LogoImg} className="h-50px app-sidebar-logo-minimize" />
+                                </Link>
+            
+                                {/* <div id="kt_app_sidebar_toggle" className="app-sidebar-toggle btn btn-icon btn-shadow btn-sm btn-color-muted btn-active-color-primary h-30px w-30px position-absolute top-50 start-100 translate-middle rotate" data-kt-toggle="true" data-kt-toggle-state="active" data-kt-toggle-target="body" data-kt-toggle-name="app-sidebar-minimize">
+                                    <i className="ki-duotone ki-black-left-line fs-3 rotate-180">
+                                        <span className="path1"></span>
+                                        <span className="path2"></span>
+                                    </i>
+                                </div> */}
+                            </div>
+                            <div className="app-sidebar-menu overflow-hidden flex-column-fluid" >
+                                <div id="kt_app_sidebar_menu_wrapper" className="app-sidebar-wrapper">
+                                    <div id="kt_app_sidebar_menu_scroll" className="scroll-y my-5 mx-3" data-kt-scroll="true" data-kt-scroll-activate="true" data-kt-scroll-height="auto" data-kt-scroll-dependencies="#kt_app_sidebar_logo, #kt_app_sidebar_footer" data-kt-scroll-wrappers="#kt_app_sidebar_menu" data-kt-scroll-offset="5px" data-kt-scroll-save-state="true">
+                                        <div className="menu menu-column menu-rounded menu-sub-indention fw-semibold fs-6" id="#kt_app_sidebar_menu" data-kt-menu="true" data-kt-menu-expand="false">
+                                            {/* <div data-kt-menu-trigger="click" className="menu-item here show menu-accordion">
+                                                <span className="menu-link">
+                                                    <span className="menu-icon">
+                                                        <i className="ki-duotone ki-element-11 fs-2">
+                                                            <span className="path1"></span>
+                                                            <span className="path2"></span>
+                                                            <span className="path3"></span>
+                                                            <span className="path4"></span>
+                                                        </i>
+                                                    </span>
+                                                    <span className="menu-title">Dashboards</span>
+                                                </span>
+                                            </div> */}
+                                            {/* {menuItems && menuItems.map((item, index) => (
+                                                <div data-kt-menu-trigger="click" className="menu-item menu-accordion" key={index}>
+                                                    <Link to={`${item.MenuPath}`}>
+                                                        <span className="menu-link">
+                                                            <span className="menu-icon">
+                                                                <i className="ki-duotone ki-bank fs-2">
+                                                                    <span className="path1"></span>
+                                                                    <span className="path2"></span>
+                                                                </i>
+                                                            </span>
+                                                            <span className="menu-title">{item.MenuName}</span>
+                                                        </span>
+                                                    </Link>
+                                                </div>
+                                            ))} */}
+
+                                            {menuItems &&
+                                                menuItems.map((item, index) => (
+                                                    <div key={index} className="menu-item menu-accordion">
+                                                        <Link
+                                                            to={item.MenuPath}
+                                                            className={`menu-link text-dark ${item.SubItems && item.SubItems.length > 0 ? "dropdown-toggle" : ""}`}
+                                                            onClick={(e) => {
+                                                                if (item.SubItems && item.SubItems.length > 0) {
+                                                                    e.preventDefault();
+                                                                    toggleDropdown(index);
+                                                                }
+                                                            }}
+                                                            data-bs-toggle={item.SubItems && item.SubItems.length > 0 ? "dropdown" : undefined}
+                                                            aria-expanded={activeDropdown === index}
+                                                        >
+                                                            {/* Use the IconClass dynamically */}
+                                                            <i className={`me-3 ${item.IconName}`}></i>
+                                                            <span className="menu-title">{item.MenuName}</span>
+                                                        </Link>
+
+                                                        {item.SubItems && item.SubItems.length > 0 && (
+                                                            <ul className={`dropdown-menu ${activeDropdown === index ? "show" : ""}`}>
+                                                                {item.SubItems.map((subItem, subIndex) => (
+                                                                    <li key={subIndex}>
+                                                                        <Link to={subItem.MenuPath} className="dropdown-item">
+                                                                            {subItem.MenuName}
+                                                                        </Link>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* <div className="app-sidebar-footer flex-column-auto pt-2 pb-6 px-6" id="kt_app_sidebar_footer">
+                                <a href="https://preview.keenthemes.com/html/metronic/docs" className="btn btn-flex flex-center btn-custom btn-primary overflow-hidden text-nowrap px-0 h-40px w-100" data-bs-toggle="tooltip" data-bs-trigger="hover" data-bs-dismiss-="click" title="200+ in-house components and 3rd-party plugins">
+                                    <span className="btn-label">Docs & Components</span>
+                                    <i className="ki-duotone ki-document btn-icon fs-2 m-0">
+                                        <span className="path1"></span>
+                                        <span className="path2"></span>
+                                    </i>
+                                </a>
+                            </div> */}
+                        </div>
+                        <div className="app-main flex-column flex-row-fluid" id="kt_app_main">
+                            <div className="d-flex flex-column flex-column-fluid">
+                                {children}
+                            </div>
+                            <div id="kt_app_footer" className="app-footer">
+                                <div className="app-container container-fluid d-flex flex-column flex-md-row flex-center flex-md-stack py-3">
+                                    <div className="text-gray-900 order-2 order-md-1">
+                                        <span className="text-muted fw-semibold me-1">2024&copy;</span>
+                                        <a href="" className="text-gray-800 text-hover-primary">Copper Wind</a>
+                                    </div>
+                                    <ul className="menu menu-gray-600 menu-hover-primary fw-semibold order-1">
+                                        <li className="menu-item">
+                                            <a href="" className="menu-link px-2">About</a>
+                                        </li>
+                                        <li className="menu-item">
+                                            <a href="" className="menu-link px-2">Support</a>
+                                        </li>
+                                        <li className="menu-item">
+                                            <a href="" className="menu-link px-2">Purchase</a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-
-                <div className="container footer-top">
-                    <div className="row gy-4">
-                        <div className="col-lg-4 col-md-6 footer-about">
-                            <a href="index.html" className="d-flex align-items-center">
-                                <span className="sitename">Cooperwind India Pvt Ltd  </span>
-                            </a>
-                            <div className="footer-contact pt-3">
-                                <p>S.F.No.269/1E, Thiruneermalai main road,</p>
-                                <p>Thirumudivakkam, Chennai, 600044</p>
-                                <p className="mt-3"><strong>Phone:</strong> <span>+91 8939896671</span></p>
-                                <p><strong>Email:</strong> <span>Info@cooperwind.com</span></p>
-                            </div>
-                        </div>
-
-                        <div className="col-lg-2 col-md-3 footer-links">
-                            <h4>Useful Links</h4>
-                            <ul>
-                                <li><i className="bi bi-chevron-right"></i> <Link to='/home' className='text-decoration-none'>Home</Link></li>
-                                <li><i className="bi bi-chevron-right"></i> <Link to='/contact' className='text-decoration-none'>Contact us</Link></li>
-                                <li><i className="bi bi-chevron-right"></i> <Link to='/blog' className='text-decoration-none'>Blog</Link></li>
-                                <li><i className="bi bi-chevron-right"></i> <Link to='/careers' className='text-decoration-none'>Careers</Link></li>
-                            </ul>
-                        </div>
-
-                        <div className="col-lg-2 col-md-3 footer-links">
-                            <h4>Quick Links</h4>
-                            <ul>
-                                <li><i className="bi bi-chevron-right"></i> <a >Supplier portal</a></li>
-                                <li><i className="bi bi-chevron-right"></i> <a >Custmer portal</a></li>
-                                {/* <li><i className="bi bi-chevron-right"></i> <a >Product Management</a></li>
-                                <li><i className="bi bi-chevron-right"></i> <a >Marketing</a></li> */}
-                            </ul>
-                        </div>
-
-                        <div className="col-lg-4 col-md-12">
-                            <h4>Follow Us</h4>
-                            <p>Stay connected with us on social media for the latest updates, behind-the-scenes content, and exciting announcements. Join our community and be part of our journey.</p>
-                            <div className="social-links d-flex">
-                                {/* <a href=""><i className="bi bi-twitter-x"></i></a>
-                                <a href=""><i className="bi bi-facebook"></i></a>
-                                <a href=""><i className="bi bi-instagram"></i></a>
-                                <a href=""><i className="bi bi-linkedin"></i></a> */}
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                <div className="container copyright text-center mt-4">
-                    <p>© <span>Copyright</span> <strong className="px-1 sitename">CWI</strong> <span>All Rights Reserved</span></p>
-                    <div className="credits">
-                        Designed by <a href="#">Cooperwind</a>
-                    </div>
-                </div>
-
-            </footer>
-            <button
-                onClick={() => setShowChat(prev => !prev)}
-                className="chatbot-toggle-btn"
-            >
-                <i className="bi bi-chat-dots-fill"></i>
-            </button>
-
-            {showChat && (
-                <div className="chatbot-box">
-                    <div className="chatbot-header">
-                        <span>Support Chat</span>
-                        <button onClick={() => setShowChat(false)} className="close-chat">&times;</button>
-                    </div>
-                    <div className="chatbot-body">
-                        <div className="chatbot-messages">
-                            <p className="bot-message">Hello! How can we assist you today? <span className="emoji-bounce">😊</span></p>
-                            {/* Add more messages dynamically if needed */}
-                        </div>
-                    </div>
-                    <div className="chatbot-input">
-                        <input
-                            type="text"
-                            placeholder="Type your message..."
-                            className="form-control"
-                        />
-                        <button className="btn text-white" style={{ backgroundColor: '#284e62' }}>Send</button>
-                    </div>
-                </div>
-            )}
-
-            <style>
-                {`
-                .emoji-bounce {
-                    display: inline-block;
-                    animation: bounce 1.2s infinite ease-in-out;
-                    }
-
-                    @keyframes bounce {
-                    0%, 100% {
-                        transform: translateY(0);
-                    }
-                    50% {
-                        transform: translateY(-6px);
-                    }
-                    }
-                .chatbot-toggle-btn {
-                        position: fixed;
-                        bottom: 20px;
-                        right: 20px;
-                        background-color: #284e62;
-                        color: white;
-                        border: none;
-                        border-radius: 50%;
-                        width: 60px;
-                        height: 60px;
-                        font-size: 24px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 9999;
-                        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                        cursor: pointer;
-                        transition: transform 0.3s ease;
-                    }
-                    .chatbot-toggle-btn:hover {
-                        transform: scale(1.1);
-                    }
-
-                    .chatbot-box {
-                        position: fixed;
-                        bottom: 90px;
-                        right: 20px;
-                        width: 300px;
-                        height: 400px;
-                        background: white;
-                        border: 1px solid #ccc;
-                        border-radius: 12px;
-                        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-                        z-index: 9999;
-                        display: flex;
-                        flex-direction: column;
-                        overflow: hidden;
-                    }
-
-                    .chatbot-header {
-                        background: #284e62;
-                        color: white;
-                        padding: 10px;
-                        font-weight: bold;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    }
-
-                    .chatbot-body {
-                        padding: 10px;
-                        flex: 1;
-                        overflow-y: auto;
-                    }
-
-                    .close-chat {
-                        background: none;
-                        border: none;
-                        color: white;
-                        font-size: 20px;
-                        cursor: pointer;
-                    }
-                        .chatbot-messages {
-                    padding: 10px;
-                    flex: 1;
-                    overflow-y: auto;
-                    display: flex;
-                    flex-direction: column;
-                    }
-
-                    .chatbot-input {
-                    display: flex;
-                    padding: 10px;
-                    border-top: 1px solid #ddd;
-                    gap: 10px;
-                    }
-
-                    .chatbot-input input {
-                    flex: 1;
-                    }
-
-                    .bot-message {
-                    background: #1e435;
-                    padding: 8px 12px;
-                    border-radius: 10px;
-                    max-width: 80%;
-                    margin-bottom: 8px;
-                    }
-                    .modal-overlay {
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: rgba(0,0,0,0.4);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        z-index: 10000;
-                        }
-
-                        .modal-box {
-                        background: white;
-                        padding: 20px 25px;
-                        border-radius: 10px;
-                        width: 400px;
-                        max-width: 90%;
-                        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                        }
-
-                        .modal-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        }
-
-                        .modal-header h5 {
-                        margin: 0;
-                        }
-
-                        .close-modal {
-                        background: none;
-                        border: none;
-                        font-size: 24px;
-                        cursor: pointer;
-                        }
-
-                        .modal-body input,
-                        .modal-body textarea {
-                        width: 100%;
-                        margin-top: 10px;
-                        padding: 10px;
-                        border: 1px solid #ddd;
-                        border-radius: 5px;
-                        }
-                `}
-            </style>
-
-            {showEnquiry && (
-                <div className="modal-overlay">
-                    <div className="modal-box">
-                        <div className="modal-header">
-                            <h5>Enquiry Form</h5>
-                            <button onClick={() => setShowEnquiry(false)} className="close-modal">&times;</button>
-                        </div>
-                        <form className="modal-body">
-                            <div className="d-flex gap-2">
-                                <input type="text" className='form-control' placeholder="First Name" required />
-                                <input type="text" className='form-control' placeholder="Last Name" required />
-                            </div>
-                            <input type="email" className='form-control' placeholder="Email" required />
-                            <textarea rows="4" className='form-control' placeholder="Leave your message..." required></textarea>
-                            <button type="submit" className="btn text-white w-100 mt-3" style={{ backgroundColor: '#284e62' }}>Send Message</button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
+		    </div>             
         </>
     )
 };
 
 export default Base;
+    
